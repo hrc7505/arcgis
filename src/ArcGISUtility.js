@@ -24,10 +24,18 @@ export default class ArcGISUtility {
             const response = await fetch(this.ROOT_URL + "/community/users/hardik7505/tags?" + this.COMMON_PARAMS);
             return await response.json();
         } catch (error) {
-            console.log("getLayers:", error);
+            console.log("getTags:", error);
         }
     }
 
+    static async getUserDetails(){
+        try {
+            const response = await fetch(this.ROOT_URL + "/community/users/hardik7505?" + this.COMMON_PARAMS);
+            return await response.json();
+        } catch (error) {
+            console.log("getUserDetails:", error);
+        }
+    }
 
     static async isServiceNameAvailable() {
         try {
