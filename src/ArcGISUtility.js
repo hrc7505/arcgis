@@ -1,17 +1,34 @@
 import { loadModules } from "esri-loader";
 
 export default class ArcGISUtility {
+    static USER_NAME;
     static ROOT_URL = "https://www.arcgis.com/sharing/rest";
     static PORTALS_URL = ArcGISUtility.ROOT_URL + "/portals";
-    static PORTAL_URL = ArcGISUtility.PORTALS_URL + "/5pxw1eo6D2JUnzAN";
-    static USER_CONTENT_URL = ArcGISUtility.ROOT_URL + "/content/users/hardik7505";
-    static SERVICE_URL = "https://services7.arcgis.com/5pxw1eo6D2JUnzAN/arcgis/rest/services/manual_map_service/FeatureServer";
-    static TOKEN = "qlfFFfsUhHGy7IzAuSRwcCE9VVWzPv7uqEjqfQFSRi5yh0yqGukx94XGm9kL1Fzl0CXJRMT8YFALCamnSVo9KiUMl7__rm5fgWr3-MySzYFe92b4kK9QVoZWQ0JewC77jZ8HzhbhcwyOa8tCUSa0KT4gWHuVSH4SUPXqSBjeOZeoETdwhr7e3luUB3oO9Krd5Y3s5S8ZK5H7fXY_SnPtQY1Y8f7z8kIXgKiBVUilotk.";
+    static DEFAULT_EXTENT;
+    // Organization id
+    static PORTAL_URL;
+    static SERVICE_URL = "https://services8.arcgis.com/Toh396wAlwHzzMFm/arcgis/rest/services/service_4/FeatureServer";
+    static TOKEN = "OZL5YuUUwOPCX9o6gRkr0b9sVS9ABhdcY2vwSr4vhtmjd-8gioMoxSq7uGLD1cdACywlbHvJVn2YSaOvDurGukLqU5gea2jhNXSplzRsUT7o6tm3asl_D1zUIok6O6tC2gWJyUbfyuMeKnsw4ts-X_wHvZnCqQjOPLnRov01JFzOX6DIXgNzpS0d3EetpGI4-C7nl80wDmU9vNqQTdejGsxDwyS8UBEnrSTnSHujlc4.";
     static COMMON_PARAMS = "f=json&token=" + ArcGISUtility.TOKEN;
 
+    static getUserContentUrl() {
+        return this.ROOT_URL + "/content/users/" + this.USER_NAME;
+    }
+
+    static async getPortalData() {
+        try {
+            const response = await fetch(this.PORTALS_URL + "/self?" + this.COMMON_PARAMS);
+            const result = await response.json();
+            this.PORTAL_URL = this.PORTALS_URL + "/" + result.id;
+            this.USER_NAME = result.name;
+            this.DEFAULT_EXTENT = result.defaultExtent;
+        } catch (error) {
+            console.log(error);
+        }
+    }
     static async getLayers() {
         try {
-            const query = this.COMMON_PARAMS + '&q=owner:hardik7505 AND (type:"Feature Service")&start=1&num=20&sortField=modified&sortOrder=desc';
+            const query = this.COMMON_PARAMS + '&q=owner:' + this.USER_NAME + ' AND (type:"Feature Service")&start=1&num=20&sortField=modified&sortOrder=desc';
             const response = await fetch(this.ROOT_URL + "/search?" + query);
             return await response.json();
         } catch (error) {
@@ -19,27 +36,34 @@ export default class ArcGISUtility {
         }
     }
 
-    static async getTags(){
-         try {
-            const response = await fetch(this.ROOT_URL + "/community/users/hardik7505/tags?" + this.COMMON_PARAMS);
+    static async getTags() {
+        try {
+            const response = await fetch(this.ROOT_URL + "/community/users/" + this.USER_NAME + "/tags?" + this.COMMON_PARAMS);
             return await response.json();
         } catch (error) {
             console.log("getTags:", error);
         }
     }
 
-    static async getUserDetails(){
+    static async getUserDetails() {
         try {
-            const response = await fetch(this.ROOT_URL + "/community/users/hardik7505?" + this.COMMON_PARAMS);
+            const response = await fetch(this.ROOT_URL + "/community/users/" + this.USER_NAME + "?" + this.COMMON_PARAMS);
             return await response.json();
         } catch (error) {
             console.log("getUserDetails:", error);
         }
     }
 
-    static async isServiceNameAvailable() {
+    static async isServiceNameAvailable(name) {
         try {
-            const query = "?name=manual_map_service&type=Feature+Service&" + this.COMMON_PARAMS;
+            if (!this.PORTAL_URL) {
+                await this.getPortalData();
+                if (!this.PORTAL_URL) {
+                    throw (new Error("No portal identity found"));
+                }
+            } console.log("this.PORTAL_URL", this.PORTAL_URL);
+
+            const query = "?name=" + name + "&type=Feature+Service&" + this.COMMON_PARAMS;
             const response = await fetch(this.PORTAL_URL + "/isServiceNameAvailable" + query);
             const result = await response.json();
             return result.available;
@@ -48,25 +72,51 @@ export default class ArcGISUtility {
         }
     }
 
-    static async createService() {
-        if (!(await this.isServiceNameAvailable())) {
-            console.log("Service name not available");
-            return;
-        }
+    static async createService(tags, serviceName) {
         try {
-            const editorTrackingInfo = "{enableEditorTracking:false,enableOwnershipAccessControl:false,allowOthersToQuery:true,allowOthersToUpdate:true,allowOthersToDelete:false,allowAnonymousToUpdate:true,allowAnonymousToDelete:true}";
-            const xssPreventionInfo = "{xssPreventionEnabled: true,xssPreventionRule:'InputOnly',xssInputRule:'rejectInvalid'}";
-            const initialExtent = "{xmin:68.18645994434114,ymin:6.7542127512573344,xmax:97.41250990931805,ymax:35.50437718021094,spatialReference:{wkid:4326}}"
-            const createParameters = "{maxRecordCount:2000,supportedQueryFormats:'JSON',capabilities:'Query',description:'Test description',allowGeometryUpdates:true,hasStaticData:true,units: 'esriMeters',syncEnabled:false,editorTrackingInfo:" + editorTrackingInfo + ",xssPreventionInfo:" + xssPreventionInfo + ",initialExtent:" + initialExtent + ",spatialReference:{wkid:4326},tables:[],name:'manual_map_service'}";
+            //  const editorTrackingInfo = "{enableEditorTracking:false,enableOwnershipAccessControl:false,allowOthersToQuery:true,allowOthersToUpdate:true,allowOthersToDelete:false,allowAnonymousToUpdate:true,allowAnonymousToDelete:true}";
+            //   const xssPreventionInfo = "{xssPreventionEnabled: true,xssPreventionRule:'InputOnly',xssInputRule:'rejectInvalid'}";
+            //  const initialExtent = JSON.stringify(this.DEFAULT_EXTENT);//"{xmin:68.18645994434114,ymin:6.7542127512573344,xmax:97.41250990931805,ymax:35.50437718021094,spatialReference:{wkid:4326}}"
+            const createParameters = JSON.stringify({
+                maxRecordCount: 2000,
+                supportedQueryFormats: 'JSON',
+                capabilities: 'Query',
+                description: '',
+                allowGeometryUpdates: true,
+                hasStaticData: true,
+                units: 'esriMeters',
+                syncEnabled: false,
+                editorTrackingInfo: {
+                    enableEditorTracking: false,
+                    enableOwnershipAccessControl: false,
+                    allowOthersToQuery: true,
+                    allowOthersToUpdate: true,
+                    allowOthersToDelete: false,
+                    allowAnonymousToUpdate: true,
+                    allowAnonymousToDelete: true
+                },
+                xssPreventionInfo: {
+                    xssPreventionEnabled: true,
+                    xssPreventionRule: 'InputOnly',
+                    xssInputRule: 'rejectInvalid'
+                },
+                initialExtent: this.DEFAULT_EXTENT,
+                spatialReference: this.DEFAULT_EXTENT.spatialReference,
+                tables: [],
+                name: serviceName
+            });//"{maxRecordCount:2000,supportedQueryFormats:'JSON',capabilities:'Query',description:'Test description',allowGeometryUpdates:true,hasStaticData:true,units: 'esriMeters',syncEnabled:false,editorTrackingInfo:" + editorTrackingInfo + ",xssPreventionInfo:" + xssPreventionInfo + ",initialExtent:" + initialExtent + ",spatialReference:{wkid:4326},tables:[],name:" + JSON.stringify(this.DEFAULT_EXTENT.spatialReference) + "}";
 
             const query = this.COMMON_PARAMS +
                 "&typeKeywords=ArcGIS Server,Data,Feature Access,Feature Service,Service,Hosted Service" +
                 "&outputType=featureService" +
-                "&tags=service" +
+                "&tags=" + tags +
                 "&createParameters=" + createParameters;
-            const response = await fetch(this.USER_CONTENT_URL + "/createService?" + query, {
-                method: "POST",
 
+            const response = await fetch(this.getUserContentUrl() + "/createService?" + query, {
+                method: "POST",
+                headers: {
+                    "content-type": "application/x-www-form-urlencoded"
+                }
             });
 
             const result = await response.json();
@@ -77,11 +127,23 @@ export default class ArcGISUtility {
         }
     }
 
-    static async update() {
+    static async update(binary, tags, typeKeywords, layerId) {
         const query = this.COMMON_PARAMS +
-            "&thumbnail=null";
-        const response = await fetch(this.USER_CONTENT_URL + "/items/02327758bcfc45d0835f4617bd01c30c/update?" + query, {
+            "&thumbnail=" + binary;
+        const formData = new FormData();
+        if (binary) {
+            formData.append("thumbnail", binary);
+        }
+        formData.append("f", "json");
+        formData.append("token", this.TOKEN);
+        formData.append("title", "Service 4");
+        formData.append("tags", "Service,Manual,Test");
+        formData.append("typeKeywords", "ArcGIS Server,Data,Feature Access,Feature Service,Service,Hosted Service,Singlelayer");
+        formData.append("id", "3fe204dfad5e4a8b92e100421bf03265");
+
+        const response = await fetch(this.getUserContentUrl() + "/items/3fe204dfad5e4a8b92e100421bf03265/update", {
             method: "POST",
+            body: formData,
         });
 
         const result = await response.json();
@@ -89,126 +151,126 @@ export default class ArcGISUtility {
 
     }
 
-    static async addToDefinations() {
-        try {
-            const response = await fetch(this.SERVICE_URL + "/addToDefinition", {
-                method: "POST",
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                },
-                body: new FormData({
-                    addToDefinition: {
-                        layers: [{
-                            f: "json",
-                            token: this.TOKEN,
-                            name: 'manual_map_service',
-                            type: 'Feature Layer',
-                            displayField: '',
-                            description: '',
-                            copyrightText: '',
-                            defaultVisibility: true,
-                            relationships: [],
-                            isDataVersioned: false,
-                            supportsRollbackOnFailureParameter: true,
-                            supportsAdvancedQueries: true,
-                            geometryType: 'esriGeometryPoint',
-                            minScale: 0,
-                            maxScale: 0,
-                            allowGeometryUpdates: true,
-                            hasAttachments: true,
-                            htmlPopupType: 'esriServerHTMLPopupTypeNone',
-                            hasM: false,
-                            hasZ: false,
-                            objectIdField: 'OBJECTID',
-                            globalIdField: '',
-                            typeIdField: '',
-                            supportedQueryFormats: 'JSON',
-                            hasStaticData: true,
-                            maxRecordCount: 10000,
-                            capabilities: 'Query',
-                            indexes: [],
-                            types: [],
-                            adminLayerInfo: {
-                                geometryField: {
-                                    name: 'Shape',
-                                    srid: 4326
-                                }
-                            },
-                            extent: {
-                                xmin: 68.18645994434114,
-                                ymin: 6.7542127512573344,
-                                xmax: 97.41250990931805,
-                                ymax: 35.50437718021094,
-                                spatialReference: {
-                                    wkid: 4326
-                                }
-                            },
-                            drawingInfo: {
-                                transparency: 0,
-                                labelingInfo: null,
-                                renderer: {
-                                    type: 'simple',
-                                    symbol: {
-                                        color: [20, 158, 206, 130],
-                                        size: 18,
-                                        angle: 0,
-                                        xoffset: 0,
-                                        yoffset: 0,
-                                        type: 'esriSMS',
-                                        style: 'esriSMSCircle',
-                                        outline: {
-                                            color: [255, 255, 255, 220],
-                                            width: 2.25,
-                                            type: 'esriSLS',
-                                            style: 'esriSLSSolid'
-                                        }
-                                    }
-                                }
-                            },
-                            fields: [
-                                {
-                                    name: 'OBJECTID',
-                                    type: 'esriFieldTypeOID',
-                                    alias: 'OBJECTID',
-                                    sqlType: 'sqlTypeOther',
-                                    nullable: false,
-                                    editable: false,
-                                    domain: null,
-                                    defaultValue: null
-                                },
-                                {
-                                    name: 'name',
-                                    type: 'esriFieldTypeString',
-                                    alias: 'name',
-                                    sqlType: 'sqlTypeNVarchar',
-                                    nullable: true,
-                                    editable: true,
-                                    domain: null,
-                                    defaultValue: null,
-                                    length: 256
-                                }],
-                            templates: [
-                                {
-                                    name: 'NewFeature',
-                                    description: '',
-                                    drawingTool: 'esriFeatureEditToolPoint',
-                                    prototype: {
-                                        attributes: { name: null }
-                                    }
-                                }
-                            ],
-                        }]
-                    }
-                })
-            });
-
-            const result = await response.json();
-            console.log(result);
-        } catch (error) {
-            console.log("addToDefinations:", error);
-        }
-    }
-
+    /*  static async addToDefinations(serviceName) {
+         try {
+             const addToDefination=JSON.stringify({
+                 layers: [{
+                     f: "json",
+                     token: this.TOKEN,
+                     name: serviceName,
+                     type: 'Feature Layer',
+                     displayField: '',
+                     description: '',
+                     copyrightText: '',
+                     defaultVisibility: true,
+                     relationships: [],
+                     isDataVersioned: false,
+                     supportsRollbackOnFailureParameter: true,
+                     supportsAdvancedQueries: true,
+                     geometryType: 'esriGeometryPoint',
+                     minScale: 0,
+                     maxScale: 0,
+                     allowGeometryUpdates: true,
+                     hasAttachments: true,
+                     htmlPopupType: 'esriServerHTMLPopupTypeNone',
+                     hasM: false,
+                     hasZ: false,
+                     objectIdField: 'OBJECTID',
+                     globalIdField: '',
+                     typeIdField: '',
+                     supportedQueryFormats: 'JSON',
+                     hasStaticData: true,
+                     maxRecordCount: 10000,
+                     capabilities: 'Query',
+                     indexes: [],
+                     types: [],
+                     adminLayerInfo: {
+                         geometryField: {
+                             name: 'Shape',
+                             srid: 4326
+                         }
+                     },
+                     extent: {
+                         xmin: 68.18645994434114,
+                         ymin: 6.7542127512573344,
+                         xmax: 97.41250990931805,
+                         ymax: 35.50437718021094,
+                         spatialReference: {
+                             wkid: 4326
+                         }
+                     },
+                     drawingInfo: {
+                         transparency: 0,
+                         labelingInfo: null,
+                         renderer: {
+                             type: 'simple',
+                             symbol: {
+                                 color: [20, 158, 206, 130],
+                                 size: 18,
+                                 angle: 0,
+                                 xoffset: 0,
+                                 yoffset: 0,
+                                 type: 'esriSMS',
+                                 style: 'esriSMSCircle',
+                                 outline: {
+                                     color: [255, 255, 255, 220],
+                                     width: 2.25,
+                                     type: 'esriSLS',
+                                     style: 'esriSLSSolid'
+                                 }
+                             }
+                         }
+                     },
+                     fields: [
+                         {
+                             name: 'OBJECTID',
+                             type: 'esriFieldTypeOID',
+                             alias: 'OBJECTID',
+                             sqlType: 'sqlTypeOther',
+                             nullable: false,
+                             editable: false,
+                             domain: null,
+                             defaultValue: null
+                         },
+                         {
+                             name: 'name',
+                             type: 'esriFieldTypeString',
+                             alias: 'name',
+                             sqlType: 'sqlTypeNVarchar',
+                             nullable: true,
+                             editable: true,
+                             domain: null,
+                             defaultValue: null,
+                             length: 256
+                         }],
+                     templates: [
+                         {
+                             name: 'NewFeature',
+                             description: '',
+                             drawingTool: 'esriFeatureEditToolPoint',
+                             prototype: {
+                                 attributes: { name: null }
+                             }
+                         }
+                     ],
+                 }]
+             })
+             const query = this.COMMON_PARAMS +
+             "&addToDefinition={layers:[{adminLayerInfo:" + adminLayerInfo + "," + otherParams + ",extent:" + extent + ",drawingInfo:" + drawingInfo + ",fields:" + fields + ",templates:" + templates + "}]}";
+             const response = await fetch(this.SERVICE_URL + "/addToDefinition", {
+                 method: "POST",
+                 headers: {
+                     'Content-Type': 'application/x-www-form-urlencoded'
+                 },
+             });
+ 
+             const result = await response.json();
+             console.log(result);
+         } catch (error) {
+             console.log("addToDefinations:", error);
+         }
+     }
+  */
     /*  static async addToDefinations() {
          try {
              const adminLayerInfo = "{geometryField:{name:'Shape',srid:4326}}";
@@ -248,8 +310,8 @@ export default class ArcGISUtility {
 
     static async getAccessToken() {
         try {
-            const query = "?f=json&username=hardik7505&password=Hardik@7505";
-            const response = await fetch("https://wecreate.maps.arcgis.com/arcgis/admin/generateToken" + query, {
+            const query = "?f=json&username=" + ArcGISUtility.USER_NAME + "&password=Hardik7505";
+            const response = await fetch("https://hrc7505.maps.arcgis.com/arcgis/admin/generateToken" + query, {
                 method: "post",
                 headers: {
                     'Access-Control-Allow-Origin': "*"

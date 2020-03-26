@@ -4,7 +4,6 @@ import ArcGISUtility from "../ArcGISUtility";
 export default class CreateLayer extends React.Component {
     optionTags = [];
     titleRef = React.createRef();
-    serviceNameRef = React.createRef();
     tagsRef = React.createRef();
     newTagRef = React.createRef();
     geometryOptions = [
@@ -33,6 +32,8 @@ export default class CreateLayer extends React.Component {
     accessTypeRef = React.createRef();
     groupOptions = [];
     groupsRef = React.createRef();
+    isServiceNameAvailable = false;
+    serviceName = "";
 
     render() {
         return (
@@ -40,10 +41,21 @@ export default class CreateLayer extends React.Component {
                 {this.renderFieldSet(
                     "Details",
                     <>
-                        <tr>{this.renderField("Title", "textbox", null, this.titleRef)}</tr>
+                        <tr>
+                            {this.renderField("Title", "textbox", null, this.titleRef)}
+                            <td>{this.isServiceNameAvailable ? "✔" : "x"}</td>
+                        </tr>
+                        <tr>
+                            <td>Service Name</td>
+                            <td>{this.serviceName}</td>
+                        </tr>
                         <tr>
                             {this.renderField("Tags", "select", this.optionTags, this.tagsRef, true)}
                             {this.renderField("New Tags", "textbox", null, this.newTagRef)}
+                        </tr>
+                        <tr>
+                            <td>Thumbnail</td>
+                            <td><input type="file" onChange={this.selectFile} /></td>
                         </tr>
                     </>
                 )}
@@ -106,6 +118,7 @@ export default class CreateLayer extends React.Component {
                                 </ul>
                             </td>
                         </tr>
+                        <tr><td colSpan={2}><button onClick={this.createLayer}>Create Layer</button></td></tr>
                     </>
                 )}
             </div>
@@ -113,11 +126,42 @@ export default class CreateLayer extends React.Component {
     }
 
     async componentDidMount() {
-        const data = await ArcGISUtility.getTags();
-        this.optionTags = data.tags.map((tag) => ({ text: tag.tag, value: tag.tag }));
-        const userDetails = await ArcGISUtility.getUserDetails();
-        this.groupOptions = userDetails.groups.map((group) => ({ text: group.title, value: group.id }));
+        this.titleRef.current.addEventListener("input", this.checkName);
+        try {
+            await ArcGISUtility.getPortalData();
+            const data = await ArcGISUtility.getTags();
+            this.optionTags = data && data.tags ? data.tags.map((tag) => ({ text: tag.tag, value: tag.tag })) : [];
+            const userDetails = await ArcGISUtility.getUserDetails();
+            this.groupOptions = userDetails && userDetails.groups ? userDetails.groups.map((group) => ({ text: group.title, value: group.id })) : [];
+            this.forceUpdate();
+        } catch (error) {
+            console.log(error);
+
+        }
+    }
+
+    componentWillUnmount() {
+        this.titleRef.current.removeEventListener("input", this.checkName);
+    }
+
+    checkName = async (e) => {
+        this.isServiceNameAvailable = await ArcGISUtility.isServiceNameAvailable(e.target.value);
+        this.serviceName = e.target.value.replace(/ /g, "_").toLowerCase();
         this.forceUpdate();
+    }
+
+    selectFile = (evt) => {
+        this.selectedFileBinary = evt.target.files[0];
+    }
+
+    createLayer = async () => {
+        /* console.log("this.tagsRef.current.value",this.tagsRef.current.value);
+        
+        const selectedTags = this.tagsRef.current.value ? this.tagsRef.current.value : "";
+        const tags = selectedTags ? (selectedTags + "," + this.newTagRef.current.value) : this.newTagRef.current.value;
+        await ArcGISUtility.createService(tags, this.serviceName); */
+        ArcGISUtility.update(this.selectedFileBinary);
+        //  ArcGISUtility.addToDefinations(this.selectedFileBinary);
     }
 
     addField = () => {

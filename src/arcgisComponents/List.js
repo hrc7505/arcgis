@@ -27,7 +27,10 @@ export default class List extends React.Component {
                             ? "Loading"
                             : this.layers.map((layer) => (
                                 <Link to={`/${layer.id}`} key={layer.id} className="listItem">
-                                    <img src={`https://Wecreate.maps.arcgis.com/sharing/rest/content/items/${layer.id}/info/${layer.thumbnail}?token=${ArcGISUtility.TOKEN}`} />
+                                    <img
+                                        src={`https://hrc7505.maps.arcgis.com/sharing/rest/content/items/${layer.id}/info/${layer.thumbnail}?token=${ArcGISUtility.TOKEN}`}
+                                        alt="TEST"
+                                    />
                                     <h3>{layer.title}</h3>
                                 </Link>
                             ))
@@ -38,12 +41,13 @@ export default class List extends React.Component {
     }
 
     async componentDidMount() {
-      /*   this.isLoading = true;
+        this.isLoading = true;
         this.forceUpdate();
+       await ArcGISUtility.getPortalData();
         const data = await ArcGISUtility.getLayers();
         this.isLoading = false;
-        this.layers = data.results;
-        this.forceUpdate(); */
+        this.layers = data.results ? data.results : [];
+        this.forceUpdate();
     }
 
     toggleModal = () => {
