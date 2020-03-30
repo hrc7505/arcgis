@@ -375,5 +375,67 @@ export default class ArcGISUtility {
             center: [72.5420, 23.7026],
             zoom: 8
         });
+
+        view.on("mouse-wheel", () => {
+            // Get map extent
+            console.log("data", view.extent);
+        })
+
+    }
+
+    static async showExtentSelector() {
+        const [Map, MapView] = await loadModules(["esri/Map", "esri/views/MapView"]);
+
+        const map = new Map({
+            basemap: 'topo-vector'
+        });
+
+        // load the map view at the ref's DOM node
+        const view = new MapView({
+            container: "zextentSelector",
+            map: map,
+            center: [72.5420, 23.7026],
+            zoom: 8
+        });
+
+        view.on("mouse-wheel", () => {
+            // Get map extent
+            console.log("data", view.extent);
+        })
+
+    }
+
+    static async user() {
+        try {
+            const data = {
+                invitations: [{
+                    email: "hrc7505@gmail.com",
+                    firstname: "Hardik",
+                    lastname: "Chaudhari",
+                    username: "hardik7505",
+                    role: "iAAAAAAAAAAAAAAA",
+                    userLicenseType: "viewerUT",
+                    fullname: "Hardik Chaudhari",
+                    userType: "arcgisonly",
+                    groups: "",
+                    userCreditAssignment: -1,
+                    applyActUserDefaults: false
+                }]
+            };
+            const formData = new FormData();
+            formData.append("invitationList", JSON.stringify(data));
+            formData.append("f", "json");
+            formData.append("token", "DcYoUewF13_18MwgaDEpreRqZNVnIJp018K1DIjS3bpQdmk1XRwQhE5dQHaw0gXX4p_zw7Bz2xo3zDYjw94XqwhC5cM0nRjEkx_Vv01lfOJdi2HaV_uuzkcZ4413n01ohP8PylW4y7NMmp4Z2FGfW2JX2lajcdzftIWvujWFynK6S1SK518ySapKSVpe9zDOcuqQFrO9QR79eA00C_mF98rWHFNTPvSw1U9Y1K-Fhrk.");
+
+            const response = await fetch("https://hrc7505.maps.arcgis.com/sharing/rest/portals/self/invite", {
+                method: "POST",
+                body: formData,
+
+            });
+
+            console.log(await response.json());
+        } catch (error) {
+            console.log("user:", error);
+        }
     }
 }

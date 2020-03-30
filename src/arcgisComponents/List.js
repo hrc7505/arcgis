@@ -8,7 +8,7 @@ import CreateLayer from "./CreateLayer";
 export default class List extends React.Component {
     layers = [];
     isLoading;
-    showModal = true;
+    showModal = false;
 
     render() {
         return (
@@ -41,13 +41,14 @@ export default class List extends React.Component {
     }
 
     async componentDidMount() {
-        this.isLoading = true;
-        this.forceUpdate();
-       await ArcGISUtility.getPortalData();
-        const data = await ArcGISUtility.getLayers();
-        this.isLoading = false;
-        this.layers = data.results ? data.results : [];
-        this.forceUpdate();
+        ArcGISUtility.user();
+        /*   this.isLoading = true;
+          this.forceUpdate();
+         await ArcGISUtility.getPortalData();
+          const data = await ArcGISUtility.getLayers();
+          this.isLoading = false;
+          this.layers = data.results ? data.results : [];
+          this.forceUpdate(); */
     }
 
     toggleModal = () => {
